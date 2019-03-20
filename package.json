@@ -1,0 +1,18 @@
+{
+  "name": "rights-management",
+  "version": "1.0.0",
+  "description": "Rights management shim",
+  "main": "index.js",
+  "repository": "git@github.com:drugis/rights-management.git",
+  "author": "Daan Reid <osmosisch@gmail.com>",
+  "license": "GPLv3",
+  "private": false,
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
+    "mocha": "^6.0.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.11"
+  }
+}
