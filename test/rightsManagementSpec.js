@@ -66,6 +66,7 @@ describe('the rights managament module', () => {
       expect(() => { rightsManagement.setRequiredRights(notArray); }).to.throw('Invalid rights input');
     });
   });
+  
   describe('expressMiddleware', () => {
     describe('for a valid configuration', () => {
       beforeEach(() => {
@@ -79,6 +80,7 @@ describe('the rights managament module', () => {
           ['/analyses/:analysisId/models/:modelId/funnelPlots/:plotId', 'get', 'read']
         ]);
       });
+
       it('should not permit requests to unknown paths', () => {
         var request = {
           method: 'GET',
@@ -86,17 +88,33 @@ describe('the rights managament module', () => {
             path: '/spurious/:fakeId'
           }
         };
-        var response = {
-          status: chai.spy()
+        var status = {
+          send: chai.spy()
         };
-        response.status.send = chai.spy();
+        var response = {
+          status: chai.spy(returns => status)
+        };
         var next = chai.spy();
         rightsManagement.expressMiddleware(request, response, next);
-        expect(next).not.to.have.been.called();
         expect(response.status).to.have.been.called.with(403);
-        expect(response.status.send).to.have.been.called.with('Insufficient user rights');
+        expect(status.send).to.have.been.called.with('Insufficient user rights');
+        expect(next).not.to.have.been.called();
       });
-      it('it should permit any request requiring "none" rights', () => {
+
+      it('should permit read requests if the user has atleast read access', () => {
+        var request = {
+          method: 'GET',
+          route: {
+            path: '/analyses/:analysisId'
+          }
+        };
+        var response = {};
+        var next = chai.spy();
+        rightsManagement.expressMiddleware(request, response, next);
+        expect(next).to.have.been.called();
+      });
+
+      it('should permit any request requiring "none" rights', () => {
         var request = {
           method: 'GET',
           route: {
