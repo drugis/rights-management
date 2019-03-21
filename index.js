@@ -13,7 +13,7 @@ const RIGHTS_ENUM = {
   'admin': 4
 };
 const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
-const VALID_METHODS = ['get', 'post', 'put', 'delete'];
+const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
 
 const INVALID_RIGHTS_INPUT = 'Invalid rights input';
 const INSUFFICIENT_USER_RIGHTS = 'Insufficient user rights';
@@ -56,12 +56,12 @@ function isInvalidRights(rights) {
 }
 
 function expressMiddleware(request, response, next) {
-  if (isUnKnownPath(request)) {
+  var rightsTriple = getTripleFor(request);
+  if (!rightsTriple) {
     response.status(403).send(INSUFFICIENT_USER_RIGHTS);
   } else {
-    var requiredRight = getRequiredRightsForPath(request);
-    var minimumRightValue = RIGHTS_ENUM[requiredRight[2]];
-    if (getUserRightValue(request) >= minimumRightValue) {
+    var minimumRightValue = RIGHTS_ENUM[rightsTriple[2]];
+    if (getUserRightValue(request.user.id) >= minimumRightValue) {
       next();
     } else {
       response.status(403).send(INSUFFICIENT_USER_RIGHTS);
@@ -69,17 +69,13 @@ function expressMiddleware(request, response, next) {
   }
 }
 
-function getRequiredRightsForPath(request) {
+function getTripleFor(request) {
   return _.find(requiredRights, (requiredRight) => {
-    return requiredRight[0] === request.route.path;
-  });
-}
-function isUnKnownPath(request) {
-  return !_.some(requiredRights, (right) => {
-    return right[0] === request.route.path;
+    return requiredRight[0] === request.route.path &&
+      requiredRight[1] === request.method;
   });
 }
 
-function getUserRightValue(request) {
-  return RIGHTS_ENUM.none;
+function getUserRightValue(userId) {
+  return RIGHTS_ENUM.admin; // sth sth db
 }
