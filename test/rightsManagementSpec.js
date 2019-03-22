@@ -164,9 +164,7 @@ describe('the rights managament module', () => {
     it('should not permit requests to unknown paths', () => {
       var request = {
         method: 'GET',
-        route: {
-          path: '/spurious/:fakeId'
-        }
+        url: '/spurious/:fakeId'
       };
       rightsManagement.expressMiddleware(request, response, next);
       expectInsufficientRights();
@@ -175,9 +173,7 @@ describe('the rights managament module', () => {
     it('should not allow methods which are not available for the path', () => {
       var request = {
         method: 'POST',
-        route: {
-          path: '/analyses'
-        }
+        url: '/analyses'
       };
       rightsManagement.expressMiddleware(request, response, next);
       expectInsufficientRights();
@@ -186,9 +182,7 @@ describe('the rights managament module', () => {
     it('should permit any request requiring "none" rights', () => {
       var request = {
         method: 'GET',
-        route: {
-          path: '/analyses'
-        }
+        url: '/analyses'
       };
       rightsManagement.expressMiddleware(request, response, next);
       expectAllowed();
@@ -197,9 +191,7 @@ describe('the rights managament module', () => {
     it('should permit read requests for owned analyses', () => {
       var request = {
         method: 'GET',
-        route: {
-          path: '/analyses/:analysisId'
-        },
+        url: '/analyses/:analysisId',
         params: {
           analysisId: '1'
         },
@@ -215,9 +207,7 @@ describe('the rights managament module', () => {
     it('should permit write requests for owned analyses', () => {
       var request = {
         method: 'POST',
-        route: {
-          path: '/analyses/:analysisId/setPrimaryModel'
-        },
+        url: '/analyses/:analysisId/setPrimaryModel',
         params: {
           analysisId: '1'
         },
@@ -232,9 +222,7 @@ describe('the rights managament module', () => {
     it('should permit owner requests for owned analyses', () => {
       var request = {
         method: 'DELETE',
-        route: {
-          path: '/analyses'
-        },
+        url: '/analyses',
         params: {
           analysisId: '1'
         },
@@ -250,9 +238,7 @@ describe('the rights managament module', () => {
     it('should permit admin requests for owned analyses', () => {
       var request = {
         method: 'POST',
-        route: {
-          path: '/analyses/:analysisId/models'
-        },
+        url: '/analyses/:analysisId/models',
         params: {
           analysisId: '1'
         },
@@ -268,9 +254,7 @@ describe('the rights managament module', () => {
     it('should not permit any request for not-owned analyses', () => {
       var request = {
         method: 'GET',
-        route: {
-          path: '/analyses/:analysisId'
-        },
+        url: '/analyses/:analysisId',
         params: {
           analysisId: '1'
         },

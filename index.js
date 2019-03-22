@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var p2r = require('path-to-regexp');
 
 module.exports = function(getAnalysis) {
 
@@ -19,7 +20,11 @@ module.exports = function(getAnalysis) {
     if (invalidInputFound) {
       throw INVALID_RIGHTS_INPUT;
     }
-    requiredRights = rights;
+    requiredRights = _.map(rights, (rightsEntry) => {
+      return _.extend({}, rightsEntry, {
+        pathRegex: p2r(rightsEntry.path)
+      });
+    });
   }
 
   function isInvalidPath(path) {
@@ -55,8 +60,8 @@ module.exports = function(getAnalysis) {
   }
 
   function getConfig(request) {
-    return _.find(requiredRights, ({path, method}) => {
-      return path === request.route.path &&
+    return _.find(requiredRights, ({pathRegex, method}) => {
+      return pathRegex.test(request.url) &&
         method === request.method;
     });
   }
