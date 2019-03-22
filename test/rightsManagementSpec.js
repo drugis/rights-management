@@ -9,7 +9,7 @@ describe('the rights managament module', () => {
   var rightsManagement;
 
   beforeEach(() => {
-    var getAnalysis = sinon.fake.yields(analysis);
+    var getAnalysis = sinon.fake.yields(null, analysis);
     rightsManagement = require('../index')(getAnalysis);
   });
 
@@ -191,10 +191,7 @@ describe('the rights managament module', () => {
     it('should permit read requests for owned analyses', () => {
       var request = {
         method: 'GET',
-        url: '/analyses/:analysisId',
-        params: {
-          analysisId: '1'
-        },
+        url: '/analyses/1',
         user: {
           id: 'ownerId'
         }
@@ -207,10 +204,7 @@ describe('the rights managament module', () => {
     it('should permit write requests for owned analyses', () => {
       var request = {
         method: 'POST',
-        url: '/analyses/:analysisId/setPrimaryModel',
-        params: {
-          analysisId: '1'
-        },
+        url: '/analyses/1/setPrimaryModel',
         user: {
           id: 'ownerId'
         }
@@ -223,9 +217,6 @@ describe('the rights managament module', () => {
       var request = {
         method: 'DELETE',
         url: '/analyses',
-        params: {
-          analysisId: '1'
-        },
         user: {
           id: 'ownerId'
         }
@@ -238,10 +229,7 @@ describe('the rights managament module', () => {
     it('should permit admin requests for owned analyses', () => {
       var request = {
         method: 'POST',
-        url: '/analyses/:analysisId/models',
-        params: {
-          analysisId: '1'
-        },
+        url: '/analyses/1/models',
         user: {
           id: 'ownerId'
         }
@@ -254,10 +242,7 @@ describe('the rights managament module', () => {
     it('should not permit any request for not-owned analyses', () => {
       var request = {
         method: 'GET',
-        url: '/analyses/:analysisId',
-        params: {
-          analysisId: '1'
-        },
+        url: '/analyses/1',
         user: {
           id: 'ownerId'
         }

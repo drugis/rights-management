@@ -46,10 +46,11 @@ module.exports = function(getAnalysis) {
     } else if (configForRequest.requiredRight === 'none') {
       next();
     } else {
-      var analysisId = Number.parseInt(request.params.analysisId);
+      var analysisId = Number.parseInt(configForRequest.pathRegex.exec(request.url)[1]);
       var userId = request.user.id;
 
-      getAnalysis(analysisId, (analysis) => {
+      getAnalysis(analysisId, (error, analysis) => {
+        if (error) { next(error); }
         if (analysis.owner !== userId) {
           response.status(403).send(INSUFFICIENT_USER_RIGHTS);
         } else {
@@ -60,7 +61,7 @@ module.exports = function(getAnalysis) {
   }
 
   function getConfig(request) {
-    return _.find(requiredRights, ({pathRegex, method}) => {
+    return _.find(requiredRights, ({ pathRegex, method }) => {
       return pathRegex.test(request.url) &&
         method === request.method;
     });
