@@ -1,81 +1,68 @@
 var _ = require('lodash');
 
-module.exports = {
-  setRequiredRights: setRequiredRights,
-  expressMiddleware: expressMiddleware
-};
+module.exports = function(getAnalysis) {
 
-const RIGHTS_ENUM = {
-  'none': 0,
-  'read': 1,
-  'write': 2,
-  'owner': 3,
-  'admin': 4
-};
-const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
-const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
+  const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
+  const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
 
-const INVALID_RIGHTS_INPUT = 'Invalid rights input';
-const INSUFFICIENT_USER_RIGHTS = 'Insufficient user rights';
+  const INVALID_RIGHTS_INPUT = 'Invalid rights input';
+  const INSUFFICIENT_USER_RIGHTS = 'Insufficient user rights';
 
-var requiredRights;
+  var requiredRights;
 
-function setRequiredRights(rights) {
-  isArrayChecker(rights);
-  var invalidInputFound = _(rights)
-    .map(isArrayChecker)
-    .some(([path, method, requiredRights, tooMuchInput]) => {
-      return (tooMuchInput !== undefined) ||
-        isInvalidPath(path) ||
+  function setRequiredRights(rights) {
+    var invalidInputFound = _.some(rights, ({ path, method, requiredRight }) => {
+      return isInvalidPath(path) ||
         isInvalidMethod(method) ||
-        isInvalidRights(requiredRights);
+        isInvalidRights(requiredRight);
     });
-  if (invalidInputFound) {
-    throw INVALID_RIGHTS_INPUT;
+    if (invalidInputFound) {
+      throw INVALID_RIGHTS_INPUT;
+    }
+    requiredRights = rights;
   }
-  requiredRights = rights;
-}
 
-function isArrayChecker(arg) {
-  if (!Array.isArray(arg)) {
-    throw INVALID_RIGHTS_INPUT;
+  function isInvalidPath(path) {
+    return typeof path !== 'string';
   }
-  return arg;
-}
 
-function isInvalidPath(path) {
-  return typeof path !== 'string';
-}
+  function isInvalidMethod(method) {
+    return !_.includes(VALID_METHODS, method);
+  }
 
-function isInvalidMethod(method) {
-  return !_.includes(VALID_METHODS, method);
-}
+  function isInvalidRights(rights) {
+    return !_.includes(VALID_RIGHTS, rights);
+  }
 
-function isInvalidRights(rights) {
-  return !_.includes(VALID_RIGHTS, rights);
-}
-
-function expressMiddleware(request, response, next) {
-  var rightsTriple = getTripleFor(request);
-  if (!rightsTriple) {
-    response.status(403).send(INSUFFICIENT_USER_RIGHTS);
-  } else {
-    var minimumRightValue = RIGHTS_ENUM[rightsTriple[2]];
-    if (getUserRightValue(request.user.id) >= minimumRightValue) {
+  function expressMiddleware(request, response, next) {
+    var configForRequest = getConfig(request);
+    if (!configForRequest) {
+      response.status(403).send(INSUFFICIENT_USER_RIGHTS);
+    } else if (configForRequest.requiredRight === 'none') {
       next();
     } else {
-      response.status(403).send(INSUFFICIENT_USER_RIGHTS);
+      var analysisId = Number.parseInt(request.params.analysisId);
+      var userId = request.user.id;
+
+      getAnalysis(analysisId, (analysis) => {
+        if (analysis.owner !== userId) {
+          response.status(403).send(INSUFFICIENT_USER_RIGHTS);
+        } else {
+          next();
+        }
+      });
     }
   }
-}
 
-function getTripleFor(request) {
-  return _.find(requiredRights, (requiredRight) => {
-    return requiredRight[0] === request.route.path &&
-      requiredRight[1] === request.method;
-  });
-}
+  function getConfig(request) {
+    return _.find(requiredRights, ({path, method}) => {
+      return path === request.route.path &&
+        method === request.method;
+    });
+  }
 
-function getUserRightValue(userId) {
-  return RIGHTS_ENUM.admin; // sth sth db
+  return {
+    setRequiredRights: setRequiredRights,
+    expressMiddleware: expressMiddleware
+  };
 }

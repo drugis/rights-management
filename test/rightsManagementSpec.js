@@ -1,25 +1,32 @@
 var chai = require('chai');
 var expect = chai.expect;
 var spies = require('chai-spies');
-var rightsManagement = require('../index');
+var sinon = require('sinon');
 
 describe('the rights managament module', () => {
   chai.use(spies);
+  var analysis = {};
+  var rightsManagement;
+
+  beforeEach(() => {
+    var getAnalysis = sinon.fake.yields(analysis);
+    rightsManagement = require('../index')(getAnalysis);
+  });
 
   describe('setRequiredRights', () => {
-    it('should fail if the input is not an array', () => {
-      var rights = {};
-      expect(() => { rightsManagement.setRequiredRights(rights); }).to.throw('Invalid rights input');
-    });
 
-    it('should fail for incorrect permission', () => {
-      var malformedRights = [
-        ['/', 'put', 123]
-      ];
+    it('should fail for invalid requiredRight', () => {
+      var malformedRights = [{
+        path: '/',
+        method: 'PUT',
+        requiredRight: 123
+      }];
       expect(() => { rightsManagement.setRequiredRights(malformedRights); }).to.throw('Invalid rights input');
-      var incorrectRights = [
-        ['/', 'put', 'toRemainSilent']
-      ];
+      var incorrectRights = [{
+        path: '/',
+        method: 'PUT',
+        requiredRight: 'toRemainSilent'
+      }];
       expect(() => { rightsManagement.setRequiredRights(incorrectRights); }).to.throw('Invalid rights input');
     });
 
@@ -28,212 +35,252 @@ describe('the rights managament module', () => {
       rightsManagement.setRequiredRights(rights);
     });
 
-    it('should allow an array with valid triples', () => {
-      var rights = [
-        ['/', 'GET', 'read'],
-        ['/', 'POST', 'admin'],
-        ['/', 'PUT', 'owner'],
-        ['/', 'DELETE', 'none'],
-        ['/', 'GET', 'admin'],
-        ['/', 'PUT', 'write']
-      ];
+    it('should allow valid triples', () => {
+      var rights = [{
+        path: '/',
+        method: 'GET',
+        requiredRight: 'read'
+      }, {
+        path: '/',
+        method: 'POST',
+        requiredRight: 'admin'
+      }, {
+        path: '/',
+        method: 'PUT',
+        requiredRight: 'owner'
+      }, {
+        path: '/',
+        method: 'DELETE',
+        requiredRight: 'none'
+      }, {
+        path: '/',
+        method: 'GET',
+        requiredRight: 'admin'
+      }, {
+        path: '/',
+        method: 'PUT',
+        requiredRight: 'write'
+      }];
       rightsManagement.setRequiredRights(rights);
     });
 
     it('should fail when the input contains an incorrect method', () => {
-      var rights = [
-        ['/', 'GET', 'write'],
-        ['/', 'grab', 'read']];
+      var rights = [{
+        path: '/',
+        method: 'GET',
+        requiredRight: 'write'
+      }, {
+        path: '/',
+        method: 'grab',
+        requiredRight: 'read'
+      }];
       expect(() => { rightsManagement.setRequiredRights(rights); }).to.throw('Invalid rights input');
     });
 
     it('should fail when the input contains an incorrect path', () => {
-      var rights = [
-        [123, 'GET', 'write'],
-        ['/', 'POST', 'read']];
+      var rights = [{
+        path: 123,
+        method: 'GET',
+        requiredRight: 'write'
+      }, {
+        path: '/',
+        method: 'POST',
+        requiredRight: 'read'
+      }];
       expect(() => { rightsManagement.setRequiredRights(rights); }).to.throw('Invalid rights input');
     });
 
     it('should fail for incorrectly-sized triples', () => {
-      var tooSmall = [['/', 'GET']];
+      var tooSmall = [{
+        path: '/',
+        method: 'GET'
+      }];
       expect(() => { rightsManagement.setRequiredRights(tooSmall); }).to.throw('Invalid rights input');
-      var tooLarge = [['/', 'GET', 'read', 'sup guys']];
-      expect(() => { rightsManagement.setRequiredRights(tooLarge); }).to.throw('Invalid rights input');
-    });
-
-    it('should fail if the triples are not arrays', () => {
-      var notArray = [{ method: 'PUT', path: '/', permission: 'read' }];
-      expect(() => { rightsManagement.setRequiredRights(notArray); }).to.throw('Invalid rights input');
     });
   });
 
   describe('expressMiddleware', () => {
-    describe('for a valid configuration', () => {
-      beforeEach(() => {
-        rightsManagement.setRequiredRights([
-          ['/analyses', 'GET', 'none'],
-          ['/analyses', 'DELETE', 'owner'],
-          ['/analyses/:analysisId', 'GET', 'read'],
-          ['/analyses/:analysisId/setPrimaryModel', 'POST', 'write'],
-          ['/analyses/:analysisId/models', 'GET', 'read'],
-          ['/analyses/:analysisId/models', 'POST', 'admin'],
-          ['/analyses/:analysisId/models/:modelId/baseline', 'PUT', 'write'],
-          ['/analyses/:analysisId/models/:modelId/funnelPlots/:plotId', 'GET', 'read']
-        ]);
-      });
+    var next;
+    var status;
+    var response;
+    beforeEach(() => {
+      rightsManagement.setRequiredRights([{
+        path: '/analyses',
+        method: 'GET',
+        requiredRight: 'none'
+      }, {
+        path: '/analyses',
+        method: 'DELETE',
+        requiredRight: 'owner'
+      }, {
+        path: '/analyses/:analysisId',
+        method: 'GET',
+        requiredRight: 'read'
+      }, {
+        path: '/analyses/:analysisId/setPrimaryModel',
+        method: 'POST',
+        requiredRight: 'write'
+      }, {
+        path: '/analyses/:analysisId/models',
+        method: 'GET',
+        requiredRight: 'read'
+      }, {
+        path: '/analyses/:analysisId/models',
+        method: 'POST',
+        requiredRight: 'admin'
+      }, {
+        path: '/analyses/:analysisId/models/:modelId/baseline',
+        method: 'PUT',
+        requiredRight: 'write'
+      }, {
+        path: '/analyses/:analysisId/models/:modelId/funnelPlots/:plotId',
+        method: 'GET',
+        requiredRight: 'read'
+      }]);
+      Object.keys(analysis).forEach(key => { delete analysis[key]; });
 
-      it('should not permit requests to unknown paths', () => {
-        var request = {
-          method: 'GET',
-          route: {
-            path: '/spurious/:fakeId'
-          }
-        };
-        var status = {
-          send: chai.spy()
-        };
-        var response = {
-          status: chai.spy(returns => status)
-        };
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(response.status).to.have.been.called.with(403);
-        expect(status.send).to.have.been.called.with('Insufficient user rights');
-        expect(next).not.to.have.been.called();
-      });
+      next = chai.spy();
 
-      it('should not allow methods which are not available for the path', ()=>{
-        var request = {
-          method: 'POST',
-          route: {
-            path: '/analyses'
-          }
-        };
-        var status = {
-          send: chai.spy()
-        };
-        var response = {
-          status: chai.spy(returns => status)
-        };
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(response.status).to.have.been.called.with(403);
-        expect(status.send).to.have.been.called.with('Insufficient user rights');
-        expect(next).not.to.have.been.called();
-      });
+      status = {
+        send: chai.spy()
+      };
+      response = {
+        status: chai.spy(() => status)
+      };
+    });
 
-      it('should permit any request requiring "none" rights', () => {
-        var request = {
-          method: 'GET',
-          route: {
-            path: '/analyses'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    function expectAllowed() {
+      expect(response.status).not.to.have.been.called();
+      expect(status.send).not.to.have.been.called();
+      expect(next).to.have.been.called();
+    }
 
-      it('should permit read requests if the user has atleast read access', () => {
-        var request = {
-          method: 'GET',
-          route: {
-            path: '/analyses/:analysisId'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    function expectInsufficientRights() {
+      expect(response.status).to.have.been.called.with(403);
+      expect(status.send).to.have.been.called.with('Insufficient user rights');
+      expect(next).not.to.have.been.called();
+    }
 
-      it('should permit write requests if the user has atleast write access', () => {
-        var request = {
-          method: 'POST',
-          route: {
-            path: '/analyses/:analysisId/setPrimaryModel'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    it('should not permit requests to unknown paths', () => {
+      var request = {
+        method: 'GET',
+        route: {
+          path: '/spurious/:fakeId'
+        }
+      };
+      rightsManagement.expressMiddleware(request, response, next);
+      expectInsufficientRights();
+    });
 
-      it('should permit owner requests if the user has atleast owner access', () => {
-        var request = {
-          method: 'DELETE',
-          route: {
-            path: '/analyses'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    it('should not allow methods which are not available for the path', () => {
+      var request = {
+        method: 'POST',
+        route: {
+          path: '/analyses'
+        }
+      };
+      rightsManagement.expressMiddleware(request, response, next);
+      expectInsufficientRights();
+    });
 
-      it('should permit owner requests if the user has atleast owner access', () => {
-        var request = {
-          method: 'DELETE',
-          route: {
-            path: '/analyses'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    it('should permit any request requiring "none" rights', () => {
+      var request = {
+        method: 'GET',
+        route: {
+          path: '/analyses'
+        }
+      };
+      rightsManagement.expressMiddleware(request, response, next);
+      expectAllowed();
+    });
 
-      it('should permit admin requests if the user has admin rights', () => {
-        var request = {
-          method: 'POST',
-          route: {
-            path: '/analyses/:analysisId/models'
-          },
-          user: {
-            id: 1
-          }
-        };
-        var response = {};
-        var next = chai.spy();
-        rightsManagement.expressMiddleware(request, response, next);
-        expect(next).to.have.been.called();
-      });
+    it('should permit read requests for owned analyses', () => {
+      var request = {
+        method: 'GET',
+        route: {
+          path: '/analyses/:analysisId'
+        },
+        params: {
+          analysisId: '1'
+        },
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'ownerId';
+      rightsManagement.expressMiddleware(request, response, next);
+      expectAllowed();
+    });
 
-      it('should not permit no "read" request if the user has no rights', ()=>{
+    it('should permit write requests for owned analyses', () => {
+      var request = {
+        method: 'POST',
+        route: {
+          path: '/analyses/:analysisId/setPrimaryModel'
+        },
+        params: {
+          analysisId: '1'
+        },
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'ownerId';
+      rightsManagement.expressMiddleware(request, response, next);
+    });
 
-      });
+    it('should permit owner requests for owned analyses', () => {
+      var request = {
+        method: 'DELETE',
+        route: {
+          path: '/analyses'
+        },
+        params: {
+          analysisId: '1'
+        },
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'ownerId';
+      rightsManagement.expressMiddleware(request, response, next);
+      expectAllowed();
+    });
 
-      it('should not permit no "write" request if the user has not enought rights', ()=>{
+    it('should permit admin requests for owned analyses', () => {
+      var request = {
+        method: 'POST',
+        route: {
+          path: '/analyses/:analysisId/models'
+        },
+        params: {
+          analysisId: '1'
+        },
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'ownerId';
+      rightsManagement.expressMiddleware(request, response, next);
+      expectAllowed();
+    });
 
-        
-      });
-
-      it('should not permit no "owner" request if the user has not enought rights', ()=>{
-        
-      });
-
-      it('should not permit no "admin" request if the user has not enought rights', ()=>{
-        
-      });
+    it('should not permit any request for not-owned analyses', () => {
+      var request = {
+        method: 'GET',
+        route: {
+          path: '/analyses/:analysisId'
+        },
+        params: {
+          analysisId: '1'
+        },
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'otherOwnerId';
+      rightsManagement.expressMiddleware(request, response, next);
+      expectInsufficientRights();
     });
   });
 });
