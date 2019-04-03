@@ -109,7 +109,7 @@ describe('the rights managament module', () => {
         method: 'GET',
         requiredRight: 'none'
       }, {
-        path: '/analyses',
+        path: '/analyses/:analysisId',
         method: 'DELETE',
         requiredRight: 'owner'
       }, {
@@ -216,7 +216,7 @@ describe('the rights managament module', () => {
     it('should permit owner requests for owned analyses', () => {
       var request = {
         method: 'DELETE',
-        url: '/analyses',
+        url: '/analyses/1',
         user: {
           id: 'ownerId'
         }
@@ -251,5 +251,20 @@ describe('the rights managament module', () => {
       rightsManagement.expressMiddleware(request, response, next);
       expectInsufficientRights();
     });
+
+
+    it('should ignore query parameters', () => {
+      var request = {
+        method: 'POST',
+        url: '/analyses/1/setPrimaryModel?modelId=32',
+        user: {
+          id: 'ownerId'
+        }
+      };
+      analysis.owner = 'ownerId';
+      rightsManagement.expressMiddleware(request, response, next);
+      expectAllowed();
+    });
+
   });
 });

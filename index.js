@@ -1,5 +1,6 @@
 var _ = require('lodash');
 var p2r = require('path-to-regexp');
+var url = require('url');
 
 module.exports = function(getAnalysis) {
 
@@ -40,13 +41,14 @@ module.exports = function(getAnalysis) {
   }
 
   function expressMiddleware(request, response, next) {
-    var configForRequest = getConfig(request);
+    const urlWithoutParams = url.parse(request.url).pathname;
+    var configForRequest = getConfig(urlWithoutParams, request.method);
     if (!configForRequest) {
       response.status(403).send(INSUFFICIENT_USER_RIGHTS);
     } else if (configForRequest.requiredRight === 'none') {
       next();
     } else {
-      var analysisId = Number.parseInt(configForRequest.pathRegex.exec(request.url)[1]);
+      var analysisId = Number.parseInt(configForRequest.pathRegex.exec(urlWithoutParams)[1]);
       var userId = request.user.id;
 
       getAnalysis(analysisId, (error, analysis) => {
@@ -60,10 +62,10 @@ module.exports = function(getAnalysis) {
     }
   }
 
-  function getConfig(request) {
+  function getConfig(urlWithoutParams, requestMethod) {
     return _.find(requiredRights, ({ pathRegex, method }) => {
-      return pathRegex.test(request.url) &&
-        method === request.method;
+      return pathRegex.test(urlWithoutParams) &&
+        method === requestMethod;
     });
   }
 
