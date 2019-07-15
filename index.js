@@ -2,8 +2,7 @@ var _ = require('lodash');
 var p2r = require('path-to-regexp');
 var url = require('url');
 
-module.exports = function(getAnalysis) {
-
+module.exports = function() {
   const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
   const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
 
@@ -50,15 +49,7 @@ module.exports = function(getAnalysis) {
     } else {
       var analysisId = Number.parseInt(configForRequest.pathRegex.exec(urlWithoutParams)[1]);
       var userId = request.user.id;
-
-      getAnalysis(analysisId, (error, analysis) => {
-        if (error) { next(error); }
-        if (analysis.owner !== userId) {
-          response.status(403).send(INSUFFICIENT_USER_RIGHTS);
-        } else {
-          next();
-        }
-      });
+      configForRequest.checkRights(response, next, analysisId, userId);
     }
   }
 
@@ -73,4 +64,4 @@ module.exports = function(getAnalysis) {
     setRequiredRights: setRequiredRights,
     expressMiddleware: expressMiddleware
   };
-}
+};
