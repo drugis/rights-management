@@ -1,34 +1,41 @@
-var _ = require('lodash');
-var p2r = require('path-to-regexp');
-var url = require('url');
+var _ = require("lodash");
+var p2r = require("path-to-regexp");
+var url = require("url");
+const { type } = require("os");
 
-module.exports = function() {
-  const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
-  const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
+module.exports = function () {
+  const VALID_RIGHTS = ["none", "read", "write", "owner", "admin"];
+  const VALID_METHODS = ["GET", "POST", "PUT", "DELETE"];
 
-  const INVALID_RIGHTS_INPUT = 'Invalid rights input';
-  const INSUFFICIENT_USER_RIGHTS = 'Insufficient user rights';
+  const INVALID_RIGHTS_INPUT = "Invalid rights input";
+  const INSUFFICIENT_USER_RIGHTS = "Insufficient user rights";
 
   var requiredRights;
 
   function setRequiredRights(rights) {
-    var invalidInputFound = _.some(rights, ({ path, method, requiredRight }) => {
-      return isInvalidPath(path) ||
-        isInvalidMethod(method) ||
-        isInvalidRights(requiredRight);
-    });
+    var invalidInputFound = _.some(
+      rights,
+      ({ path, method, requiredRight, checkRights }) => {
+        return (
+          isInvalidPath(path) ||
+          isInvalidMethod(method) ||
+          isInvalidRights(requiredRight) ||
+          isInvalidCheckFunction(checkRights)
+        );
+      }
+    );
     if (invalidInputFound) {
       throw INVALID_RIGHTS_INPUT;
     }
     requiredRights = _.map(rights, (rightsEntry) => {
       return _.extend({}, rightsEntry, {
-        pathRegex: p2r(rightsEntry.path)
+        pathRegex: p2r(rightsEntry.path),
       });
     });
   }
 
   function isInvalidPath(path) {
-    return typeof path !== 'string';
+    return typeof path !== "string";
   }
 
   function isInvalidMethod(method) {
@@ -39,29 +46,35 @@ module.exports = function() {
     return !_.includes(VALID_RIGHTS, rights);
   }
 
+  function isInvalidCheckFunction(checkFunction) {
+    return !checkFunction || typeof checkFunction !== "function";
+  }
+
   function expressMiddleware(request, response, next) {
     const urlWithoutParams = url.parse(request.url).pathname;
     var configForRequest = getConfig(urlWithoutParams, request.method);
     if (!configForRequest) {
       response.status(403).send(INSUFFICIENT_USER_RIGHTS);
-    } else if (configForRequest.requiredRight === 'none') {
+    } else if (configForRequest.requiredRight === "none") {
       next();
     } else {
-      var analysisId = Number.parseInt(configForRequest.pathRegex.exec(urlWithoutParams)[1]);
+      var analysisId = Number.parseInt(
+        configForRequest.pathRegex.exec(urlWithoutParams)[1]
+      );
       var userId = request.user.id;
+      console.log("checkiung rights");
       configForRequest.checkRights(response, next, analysisId, userId);
     }
   }
 
   function getConfig(urlWithoutParams, requestMethod) {
     return _.find(requiredRights, ({ pathRegex, method }) => {
-      return pathRegex.test(urlWithoutParams) &&
-        method === requestMethod;
+      return pathRegex.test(urlWithoutParams) && method === requestMethod;
     });
   }
 
   return {
     setRequiredRights: setRequiredRights,
-    expressMiddleware: expressMiddleware
+    expressMiddleware: expressMiddleware,
   };
 };
