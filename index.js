@@ -1,14 +1,14 @@
-var _ = require("lodash");
-var p2r = require("path-to-regexp");
-var url = require("url");
-const { type } = require("os");
+var _ = require('lodash');
+var { pathToRegexp } = require('path-to-regexp');
+var url = require('url');
+const { type } = require('os');
 
 module.exports = function () {
-  const VALID_RIGHTS = ["none", "read", "write", "owner", "admin"];
-  const VALID_METHODS = ["GET", "POST", "PUT", "DELETE"];
+  const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
+  const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
 
-  const INVALID_RIGHTS_INPUT = "Invalid rights input";
-  const INSUFFICIENT_USER_RIGHTS = "Insufficient user rights";
+  const INVALID_RIGHTS_INPUT = 'Invalid rights input';
+  const INSUFFICIENT_USER_RIGHTS = 'Insufficient user rights';
 
   var requiredRights;
 
@@ -29,13 +29,13 @@ module.exports = function () {
     }
     requiredRights = _.map(rights, (rightsEntry) => {
       return _.extend({}, rightsEntry, {
-        pathRegex: p2r(rightsEntry.path),
+        pathRegex: pathToRegexp(rightsEntry.path),
       });
     });
   }
 
   function isInvalidPath(path) {
-    return typeof path !== "string";
+    return typeof path !== 'string';
   }
 
   function isInvalidMethod(method) {
@@ -47,7 +47,7 @@ module.exports = function () {
   }
 
   function isInvalidCheckFunction(checkFunction) {
-    return !checkFunction || typeof checkFunction !== "function";
+    return !checkFunction || typeof checkFunction !== 'function';
   }
 
   function expressMiddleware(request, response, next) {
@@ -55,14 +55,14 @@ module.exports = function () {
     var configForRequest = getConfig(urlWithoutParams, request.method);
     if (!configForRequest) {
       response.status(403).send(INSUFFICIENT_USER_RIGHTS);
-    } else if (configForRequest.requiredRight === "none") {
+    } else if (configForRequest.requiredRight === 'none') {
       next();
     } else {
       var analysisId = Number.parseInt(
         configForRequest.pathRegex.exec(urlWithoutParams)[1]
       );
       var userId = request.user.id;
-      console.log("checkiung rights");
+      console.log('checkiung rights');
       configForRequest.checkRights(response, next, analysisId, userId);
     }
   }
