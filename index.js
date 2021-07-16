@@ -1,7 +1,6 @@
 var _ = require('lodash');
-var { pathToRegexp } = require('path-to-regexp');
+var {pathToRegexp} = require('path-to-regexp');
 var url = require('url');
-const { type } = require('os');
 
 module.exports = function () {
   const VALID_RIGHTS = ['none', 'read', 'write', 'owner', 'admin'];
@@ -13,23 +12,19 @@ module.exports = function () {
   var requiredRights;
 
   function setRequiredRights(rights) {
-    var invalidInputFound = _.some(
-      rights,
-      ({ path, method, requiredRight, checkRights }) => {
-        return (
-          isInvalidPath(path) ||
-          isInvalidMethod(method) ||
-          isInvalidRights(requiredRight) ||
-          isInvalidCheckFunction(checkRights)
-        );
-      }
-    );
+    var invalidInputFound = _.some(rights, ({path, method, requiredRight}) => {
+      return (
+        isInvalidPath(path) ||
+        isInvalidMethod(method) ||
+        isInvalidRights(requiredRight)
+      );
+    });
     if (invalidInputFound) {
       throw INVALID_RIGHTS_INPUT;
     }
     requiredRights = _.map(rights, (rightsEntry) => {
       return _.extend({}, rightsEntry, {
-        pathRegex: pathToRegexp(rightsEntry.path),
+        pathRegex: pathToRegexp(rightsEntry.path)
       });
     });
   }
@@ -44,10 +39,6 @@ module.exports = function () {
 
   function isInvalidRights(rights) {
     return !_.includes(VALID_RIGHTS, rights);
-  }
-
-  function isInvalidCheckFunction(checkFunction) {
-    return !checkFunction || typeof checkFunction !== 'function';
   }
 
   function expressMiddleware(request, response, next) {
@@ -68,13 +59,13 @@ module.exports = function () {
   }
 
   function getConfig(urlWithoutParams, requestMethod) {
-    return _.find(requiredRights, ({ pathRegex, method }) => {
+    return _.find(requiredRights, ({pathRegex, method}) => {
       return pathRegex.test(urlWithoutParams) && method === requestMethod;
     });
   }
 
   return {
-    setRequiredRights: setRequiredRights,
-    expressMiddleware: expressMiddleware,
+    setRequiredRights,
+    expressMiddleware
   };
 };
